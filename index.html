@@ -2,32 +2,19 @@
 <html lang="he">
 <head>
 <meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
-
-<title>Points Game</title>
-
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>משחק נקודות</title>
 <style>
-html, body {
-    margin: 0;
-    padding: 0;
-    background: #cfcfcf;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    touch-action: none;
-}
-
-canvas {
-    display: block;
-}
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #cfcfcf;
+        overflow: hidden;
+        touch-action: none;
+    }
+    canvas {
+        display: block;
+    }
 </style>
 </head>
 <body>
@@ -38,47 +25,37 @@ canvas {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// ====== עיצוב ======
-const LINE_COLOR   = "#8a8a8a";
-const POINT_COLOR  = "#7d7d7d";
-const LINE_WIDTH   = 3;
-const POINT_RADIUS = 8;
-const DEAD_ZONE    = 20;
-
-// ====== נקודות ======
-let points = [];
-
-// ====== התאמה למסך ======
-function initPoints() {
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const size = Math.min(canvas.width, canvas.height) * 0.25;
-
-    return [
-        { x: cx,        y: cy - size },
-        { x: cx + size, y: cy        },
-        { x: cx,        y: cy + size },
-        { x: cx - size, y: cy        }
-    ];
-}
-
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    points = initPoints();
-    draw();
 }
-
-window.addEventListener("resize", resize);
 resize();
+window.addEventListener("resize", resize);
 
-// ====== ציור ======
+// צבעים
+const lineColor = "#8a8a8a";
+const pointColor = "#7d7d7d";
+
+// רדיוס נקודה
+const pointRadius = 8;
+
+// נקודות המרובע
+let points = [
+    { x: 200, y: 150 },
+    { x: 350, y: 300 },
+    { x: 300, y: 500 },
+    { x: 150, y: 300 }
+];
+
+let activePoint = null;
+
+// ציור
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // קווים
-    ctx.strokeStyle = LINE_COLOR;
-    ctx.lineWidth = LINE_WIDTH;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     points.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x, p.y);
@@ -88,46 +65,40 @@ function draw() {
     ctx.stroke();
 
     // נקודות
-    ctx.fillStyle = POINT_COLOR;
+    ctx.fillStyle = pointColor;
     points.forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, POINT_RADIUS, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
-// ====== Touch helpers ======
+draw();
+
+// עזר – מיקום אצבע
 function getTouchPos(e) {
     const t = e.touches[0];
     return { x: t.clientX, y: t.clientY };
 }
 
+// בדיקה אם נוגעים בנקודה
 function hitTest(pos) {
     return points.find(p => {
         const dx = p.x - pos.x;
         const dy = p.y - pos.y;
-        return Math.hypot(dx, dy) < POINT_RADIUS * 2;
+        return Math.sqrt(dx*dx + dy*dy) < pointRadius * 2;
     });
 }
 
-function inDeadZone(x) {
-    return x < DEAD_ZONE;
-}
-
-let activePoint = null;
-
-// ====== Touch events ======
+// Touch events
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
-    if (inDeadZone(pos.x)) return;
     activePoint = hitTest(pos);
 });
 
 canvas.addEventListener("touchmove", e => {
     if (!activePoint) return;
     const pos = getTouchPos(e);
-    if (inDeadZone(pos.x)) return;
-
     activePoint.x = pos.x;
     activePoint.y = pos.y;
     draw();
