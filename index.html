@@ -29,28 +29,47 @@ canvas {
     display: block;
 }
 
-/* כפתורים */
+/* כפתורי צורות */
 .btn {
     position: fixed;
     top: 12px;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border: 2px solid #7d7d7d;
-    background: transparent;
-    z-index: 10;
+    background: #cfcfcf;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
+/* ריבוע */
 #squareBtn {
     right: 12px;
 }
 
+/* כוכב */
 #starBtn {
-    right: 40px;
+    right: 44px;
+}
+
+/* ציור כוכב קטן בתוך הכפתור */
+#starBtn::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    background: #7d7d7d;
     clip-path: polygon(
-        50% 0%, 61% 35%, 98% 35%,
-        68% 57%, 79% 91%,
-        50% 70%, 21% 91%,
-        32% 57%, 2% 35%,
+        50% 0%,
+        61% 35%,
+        98% 35%,
+        68% 57%,
+        79% 91%,
+        50% 70%,
+        21% 91%,
+        32% 57%,
+        2% 35%,
         39% 35%
     );
 }
@@ -187,14 +206,12 @@ function makeStar() {
     let angle = -Math.PI / 2;
 
     for (let i = 0; i < spikes; i++) {
-        // נקודה חיצונית
         points.push({
             x: cx + Math.cos(angle) * outerR,
             y: cy + Math.sin(angle) * outerR
         });
         angle += Math.PI / spikes;
 
-        // נקודה פנימית
         points.push({
             x: cx + Math.cos(angle) * innerR,
             y: cy + Math.sin(angle) * innerR
