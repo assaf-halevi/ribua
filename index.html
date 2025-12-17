@@ -38,31 +38,39 @@ canvas {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+// ====== עיצוב ======
+const LINE_COLOR   = "#8a8a8a";
+const POINT_COLOR  = "#7d7d7d";
+const LINE_WIDTH   = 3;
+const POINT_RADIUS = 8;
+const DEAD_ZONE    = 20;
+
+// ====== נקודות ======
+let points = [];
+
+// ====== התאמה למסך ======
+function initPoints() {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const size = Math.min(canvas.width, canvas.height) * 0.25;
+
+    return [
+        { x: cx,        y: cy - size },
+        { x: cx + size, y: cy        },
+        { x: cx,        y: cy + size },
+        { x: cx - size, y: cy        }
+    ];
+}
+
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    points = initPoints();
+    draw();
 }
-resize();
+
 window.addEventListener("resize", resize);
-
-// ====== עיצוב ======
-const LINE_COLOR  = "#8a8a8a";
-const POINT_COLOR = "#7d7d7d";
-const LINE_WIDTH  = 3;
-const POINT_RADIUS = 8;
-
-// אזור מת למניעת מחוות מערכת
-const DEAD_ZONE = 20;
-
-// ====== נקודות ======
-let points = [
-    { x: 200, y: 150 },
-    { x: 360, y: 280 },
-    { x: 300, y: 520 },
-    { x: 140, y: 300 }
-];
-
-let activePoint = null;
+resize();
 
 // ====== ציור ======
 function draw() {
@@ -88,8 +96,6 @@ function draw() {
     });
 }
 
-draw();
-
 // ====== Touch helpers ======
 function getTouchPos(e) {
     const t = e.touches[0];
@@ -100,13 +106,15 @@ function hitTest(pos) {
     return points.find(p => {
         const dx = p.x - pos.x;
         const dy = p.y - pos.y;
-        return Math.sqrt(dx*dx + dy*dy) < POINT_RADIUS * 2;
+        return Math.hypot(dx, dy) < POINT_RADIUS * 2;
     });
 }
 
 function inDeadZone(x) {
     return x < DEAD_ZONE;
 }
+
+let activePoint = null;
 
 // ====== Touch events ======
 canvas.addEventListener("touchstart", e => {
