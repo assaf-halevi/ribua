@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>משחק נקודות</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #cfcfcf;
+        overflow: hidden;
+        touch-action: none;
+    }
+    canvas {
+        display: block;
+    }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+// צבעים
+const lineColor = "#8a8a8a";
+const pointColor = "#7d7d7d";
+
+// רדיוס נקודה
+const pointRadius = 8;
+
+// נקודות המרובע
+let points = [
+    { x: 200, y: 150 },
+    { x: 350, y: 300 },
+    { x: 300, y: 500 },
+    { x: 150, y: 300 }
+];
+
+let activePoint = null;
+
+// ציור
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // קווים
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+
+    // נקודות
+    ctx.fillStyle = pointColor;
+    points.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+draw();
+
+// עזר – מיקום אצבע
+function getTouchPos(e) {
+    const t = e.touches[0];
+    return { x: t.clientX, y: t.clientY };
+}
+
+// בדיקה אם נוגעים בנקודה
+function hitTest(pos) {
+    return points.find(p => {
+        const dx = p.x - pos.x;
+        const dy = p.y - pos.y;
+        return Math.sqrt(dx*dx + dy*dy) < pointRadius * 2;
+    });
+}
+
+// Touch events
+canvas.addEventListener("touchstart", e => {
+    const pos = getTouchPos(e);
+    activePoint = hitTest(pos);
+});
+
+canvas.addEventListener("touchmove", e => {
+    if (!activePoint) return;
+    const pos = getTouchPos(e);
+    activePoint.x = pos.x;
+    activePoint.y = pos.y;
+    draw();
+});
+
+canvas.addEventListener("touchend", () => {
+    activePoint = null;
+});
+</script>
+
+</body>
+</html>
