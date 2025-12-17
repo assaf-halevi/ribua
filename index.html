@@ -29,36 +29,33 @@ canvas {
     display: block;
 }
 
-/* כפתורי צורות */
-.btn {
+/* כפתור ריבוע */
+#squareBtn {
     position: fixed;
     top: 12px;
+    right: 12px;
     width: 22px;
     height: 22px;
     border: 2px solid #7d7d7d;
     background: #cfcfcf;
     z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     box-sizing: border-box;
 }
 
-/* ריבוע */
-#squareBtn {
-    right: 12px;
-}
-
-/* כוכב */
+/* כפתור כוכב – בלי ריבוע */
 #starBtn {
-    right: 44px;
+    position: fixed;
+    top: 12px;
+    right: 48px;
+    width: 22px;
+    height: 22px;
+    z-index: 20;
 }
 
-/* ציור כוכב קטן בתוך הכפתור */
 #starBtn::before {
     content: "";
-    width: 14px;
-    height: 14px;
+    position: absolute;
+    inset: 0;
     background: #7d7d7d;
     clip-path: polygon(
         50% 0%,
@@ -77,8 +74,8 @@ canvas {
 </head>
 <body>
 
-<div id="starBtn" class="btn"></div>
-<div id="squareBtn" class="btn"></div>
+<div id="starBtn"></div>
+<div id="squareBtn"></div>
 <canvas id="canvas"></canvas>
 
 <script>
@@ -99,6 +96,7 @@ const POINT_COLOR  = "#7d7d7d";
 const LINE_WIDTH   = 3;
 const POINT_RADIUS = 8;
 const DEAD_ZONE    = 20;
+const MAGNET_RADIUS = 40;
 
 /* ================= נקודות ================= */
 let points = [
@@ -120,16 +118,27 @@ function getTouchPos(e) {
     return { x: t.clientX, y: t.clientY };
 }
 
-function hitTest(pos) {
-    return points.find(p => {
-        const dx = p.x - pos.x;
-        const dy = p.y - pos.y;
-        return Math.hypot(dx, dy) < POINT_RADIUS * 2;
-    });
-}
-
 function inDeadZone(x) {
     return x < DEAD_ZONE;
+}
+
+function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function getClosestPoint(pos) {
+    let best = null;
+    let bestDist = Infinity;
+
+    points.forEach(p => {
+        const d = distance(p, pos);
+        if (d < bestDist) {
+            bestDist = d;
+            best = p;
+        }
+    });
+
+    return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
 /* ================= ציור ================= */
@@ -160,7 +169,9 @@ draw();
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
     if (inDeadZone(pos.x)) return;
-    activePoint = hitTest(pos);
+
+    // קודם בדיקה רגילה
+    activePoint = getClosestPoint(pos);
 });
 
 canvas.addEventListener("touchmove", e => {
@@ -171,6 +182,7 @@ canvas.addEventListener("touchmove", e => {
 
     activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
     activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
+
     draw();
 });
 
