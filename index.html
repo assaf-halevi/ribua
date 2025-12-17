@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 
 <meta name="viewport"
-      content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+      content="width=device-width, height=device-height,
+               initial-scale=1.0, user-scalable=no">
 
-<title>Points Game</title>
+<title>Shapes for Kids</title>
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -18,38 +19,54 @@
 html, body {
     margin: 0;
     padding: 0;
-    background: #cfcfcf;
     width: 100%;
     height: 100%;
+    background: #cfcfcf;
     overflow: hidden;
     touch-action: none;
 }
 
+/* קנבס */
 canvas {
     display: block;
 }
 
-/* כפתור ריבוע */
+/* ===================== */
+/* שכבות חסימה למערכת   */
+/* ===================== */
+.blocker {
+    position: fixed;
+    z-index: 100;
+    pointer-events: all;
+    background: transparent;
+}
+
+#blockTop    { top: 0;    left: 0; width: 100%; height: 40px; }
+#blockBottom { bottom: 0; left: 0; width: 100%; height: 40px; }
+#blockLeft   { top: 0;    left: 0; width: 25px; height: 100%; }
+#blockRight  { top: 0;    right: 0; width: 25px; height: 100%; }
+
+/* ===================== */
+/* כפתורים              */
+/* ===================== */
 #squareBtn {
     position: fixed;
     top: 12px;
     right: 12px;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     border: 2px solid #7d7d7d;
     background: #cfcfcf;
-    z-index: 20;
-    box-sizing: border-box;
+    z-index: 50;
 }
 
-/* כפתור כוכב – בלי ריבוע */
 #starBtn {
     position: fixed;
     top: 12px;
-    right: 48px;
-    width: 22px;
-    height: 22px;
-    z-index: 20;
+    right: 52px;
+    width: 26px;
+    height: 26px;
+    z-index: 50;
 }
 
 #starBtn::before {
@@ -70,16 +87,60 @@ canvas {
         39% 35%
     );
 }
+
+/* אזור יציאה להורה בלבד */
+#exitZone {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    z-index: 200;
+}
 </style>
 </head>
+
 <body>
 
+<!-- שכבות חסימה -->
+<div id="blockTop" class="blocker"></div>
+<div id="blockBottom" class="blocker"></div>
+<div id="blockLeft" class="blocker"></div>
+<div id="blockRight" class="blocker"></div>
+
+<!-- כפתורים -->
 <div id="starBtn"></div>
 <div id="squareBtn"></div>
+<div id="exitZone"></div>
+
 <canvas id="canvas"></canvas>
 
 <script>
-/* ================= Canvas ================= */
+/* ===================== */
+/* Fullscreen אגרסיבי   */
+/* ===================== */
+function enterFullscreen() {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+}
+document.addEventListener("touchstart", enterFullscreen, { once: true });
+
+/* דאבל טאפ נסתר ליציאה (הורה) */
+let lastTap = 0;
+exitZone.addEventListener("touchstart", () => {
+    const now = Date.now();
+    if (now - lastTap < 400) {
+        if (document.exitFullscreen) document.exitFullscreen();
+    }
+    lastTap = now;
+});
+
+/* ===================== */
+/* Canvas                */
+/* ===================== */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -90,25 +151,32 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-/* ================= עיצוב ================= */
+/* ===================== */
+/* הגדרות משחק           */
+/* ===================== */
 const LINE_COLOR   = "#8a8a8a";
 const POINT_COLOR  = "#7d7d7d";
 const LINE_WIDTH   = 3;
-const POINT_RADIUS = 8;
-const DEAD_ZONE    = 20;
-const MAGNET_RADIUS = 40;
+const POINT_RADIUS = 12;
 
-/* ================= נקודות ================= */
+/* 🧲 מגנט חזק לפעוט */
+const MAGNET_RADIUS = 100;
+
+/* ===================== */
+/* נקודות                */
+/* ===================== */
 let points = [
-    { x: 200, y: 150 },
-    { x: 360, y: 280 },
-    { x: 300, y: 520 },
-    { x: 140, y: 300 }
+    { x: 200, y: 200 },
+    { x: 400, y: 250 },
+    { x: 350, y: 450 },
+    { x: 180, y: 350 }
 ];
 
 let activePoint = null;
 
-/* ================= Helpers ================= */
+/* ===================== */
+/* Helpers               */
+/* ===================== */
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
@@ -118,10 +186,6 @@ function getTouchPos(e) {
     return { x: t.clientX, y: t.clientY };
 }
 
-function inDeadZone(x) {
-    return x < DEAD_ZONE;
-}
-
 function distance(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
 }
@@ -129,7 +193,6 @@ function distance(a, b) {
 function getClosestPoint(pos) {
     let best = null;
     let bestDist = Infinity;
-
     points.forEach(p => {
         const d = distance(p, pos);
         if (d < bestDist) {
@@ -137,11 +200,12 @@ function getClosestPoint(pos) {
             best = p;
         }
     });
-
     return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
-/* ================= ציור ================= */
+/* ===================== */
+/* ציור                  */
+/* ===================== */
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -162,35 +226,31 @@ function draw() {
         ctx.fill();
     });
 }
-
 draw();
 
-/* ================= Touch ================= */
+/* ===================== */
+/* Touch                 */
+/* ===================== */
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
-    if (inDeadZone(pos.x)) return;
-
-    // קודם בדיקה רגילה
     activePoint = getClosestPoint(pos);
 });
 
 canvas.addEventListener("touchmove", e => {
     if (!activePoint) return;
-
     const pos = getTouchPos(e);
-    if (inDeadZone(pos.x)) return;
-
     activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
     activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
-
     draw();
 });
 
 canvas.addEventListener("touchend", () => activePoint = null);
 
-/* ================= כפתורי צורות ================= */
-document.getElementById("squareBtn").onclick = makeSquare;
-document.getElementById("starBtn").onclick   = makeStar;
+/* ===================== */
+/* צורות                 */
+/* ===================== */
+squareBtn.onclick = makeSquare;
+starBtn.onclick   = makeStar;
 
 function makeSquare() {
     const size = Math.min(canvas.width, canvas.height) * 0.4;
@@ -212,23 +272,16 @@ function makeStar() {
     const cy = canvas.height / 2;
     const outerR = Math.min(canvas.width, canvas.height) * 0.35;
     const innerR = outerR * 0.45;
-    const spikes = 5;
 
     points = [];
     let angle = -Math.PI / 2;
-
-    for (let i = 0; i < spikes; i++) {
-        points.push({
-            x: cx + Math.cos(angle) * outerR,
-            y: cy + Math.sin(angle) * outerR
-        });
-        angle += Math.PI / spikes;
-
-        points.push({
-            x: cx + Math.cos(angle) * innerR,
-            y: cy + Math.sin(angle) * innerR
-        });
-        angle += Math.PI / spikes;
+    for (let i = 0; i < 5; i++) {
+        points.push({ x: cx + Math.cos(angle) * outerR,
+                      y: cy + Math.sin(angle) * outerR });
+        angle += Math.PI / 5;
+        points.push({ x: cx + Math.cos(angle) * innerR,
+                      y: cy + Math.sin(angle) * innerR });
+        angle += Math.PI / 5;
     }
     draw();
 }
