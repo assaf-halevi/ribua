@@ -35,26 +35,27 @@ canvas {
 <canvas id="canvas"></canvas>
 
 <script>
+/* ================== Canvas ================== */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-    canvas.width = window.innerWidth;
+    canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 resize();
 window.addEventListener("resize", resize);
 
-// ====== עיצוב ======
-const LINE_COLOR  = "#8a8a8a";
-const POINT_COLOR = "#7d7d7d";
-const LINE_WIDTH  = 3;
+/* ================== עיצוב ================== */
+const LINE_COLOR   = "#8a8a8a";
+const POINT_COLOR  = "#7d7d7d";
+const LINE_WIDTH   = 3;
 const POINT_RADIUS = 8;
 
-// אזור מת למניעת מחוות מערכת
+/* אזור מת למחוות מערכת */
 const DEAD_ZONE = 20;
 
-// ====== נקודות ======
+/* ================== נקודות ================== */
 let points = [
     { x: 200, y: 150 },
     { x: 360, y: 280 },
@@ -64,7 +65,29 @@ let points = [
 
 let activePoint = null;
 
-// ====== ציור ======
+/* ================== Helpers ================== */
+function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+}
+
+function getTouchPos(e) {
+    const t = e.touches[0];
+    return { x: t.clientX, y: t.clientY };
+}
+
+function hitTest(pos) {
+    return points.find(p => {
+        const dx = p.x - pos.x;
+        const dy = p.y - pos.y;
+        return Math.hypot(dx, dy) < POINT_RADIUS * 2;
+    });
+}
+
+function inDeadZone(x) {
+    return x < DEAD_ZONE;
+}
+
+/* ================== ציור ================== */
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -90,25 +113,7 @@ function draw() {
 
 draw();
 
-// ====== Touch helpers ======
-function getTouchPos(e) {
-    const t = e.touches[0];
-    return { x: t.clientX, y: t.clientY };
-}
-
-function hitTest(pos) {
-    return points.find(p => {
-        const dx = p.x - pos.x;
-        const dy = p.y - pos.y;
-        return Math.sqrt(dx*dx + dy*dy) < POINT_RADIUS * 2;
-    });
-}
-
-function inDeadZone(x) {
-    return x < DEAD_ZONE;
-}
-
-// ====== Touch events ======
+/* ================== Touch Events ================== */
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
     if (inDeadZone(pos.x)) return;
@@ -117,11 +122,18 @@ canvas.addEventListener("touchstart", e => {
 
 canvas.addEventListener("touchmove", e => {
     if (!activePoint) return;
+
     const pos = getTouchPos(e);
     if (inDeadZone(pos.x)) return;
 
-    activePoint.x = pos.x;
-    activePoint.y = pos.y;
+    const minX = POINT_RADIUS;
+    const maxX = canvas.width  - POINT_RADIUS;
+    const minY = POINT_RADIUS;
+    const maxY = canvas.height - POINT_RADIUS;
+
+    activePoint.x = clamp(pos.x, minX, maxX);
+    activePoint.y = clamp(pos.y, minY, maxY);
+
     draw();
 });
 
