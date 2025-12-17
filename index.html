@@ -2,19 +2,32 @@
 <html lang="he">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>משחק נקודות</title>
+
+<meta name="viewport"
+      content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+
+<title>Points Game</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        background: #cfcfcf;
-        overflow: hidden;
-        touch-action: none;
-    }
-    canvas {
-        display: block;
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #cfcfcf;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+}
+
+canvas {
+    display: block;
+}
 </style>
 </head>
 <body>
@@ -32,30 +45,32 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-// צבעים
-const lineColor = "#8a8a8a";
-const pointColor = "#7d7d7d";
+// ====== עיצוב ======
+const LINE_COLOR  = "#8a8a8a";
+const POINT_COLOR = "#7d7d7d";
+const LINE_WIDTH  = 3;
+const POINT_RADIUS = 8;
 
-// רדיוס נקודה
-const pointRadius = 8;
+// אזור מת למניעת מחוות מערכת
+const DEAD_ZONE = 20;
 
-// נקודות המרובע
+// ====== נקודות ======
 let points = [
     { x: 200, y: 150 },
-    { x: 350, y: 300 },
-    { x: 300, y: 500 },
-    { x: 150, y: 300 }
+    { x: 360, y: 280 },
+    { x: 300, y: 520 },
+    { x: 140, y: 300 }
 ];
 
 let activePoint = null;
 
-// ציור
+// ====== ציור ======
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // קווים
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = LINE_COLOR;
+    ctx.lineWidth = LINE_WIDTH;
     ctx.beginPath();
     points.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x, p.y);
@@ -65,40 +80,46 @@ function draw() {
     ctx.stroke();
 
     // נקודות
-    ctx.fillStyle = pointColor;
+    ctx.fillStyle = POINT_COLOR;
     points.forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, POINT_RADIUS, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
 draw();
 
-// עזר – מיקום אצבע
+// ====== Touch helpers ======
 function getTouchPos(e) {
     const t = e.touches[0];
     return { x: t.clientX, y: t.clientY };
 }
 
-// בדיקה אם נוגעים בנקודה
 function hitTest(pos) {
     return points.find(p => {
         const dx = p.x - pos.x;
         const dy = p.y - pos.y;
-        return Math.sqrt(dx*dx + dy*dy) < pointRadius * 2;
+        return Math.sqrt(dx*dx + dy*dy) < POINT_RADIUS * 2;
     });
 }
 
-// Touch events
+function inDeadZone(x) {
+    return x < DEAD_ZONE;
+}
+
+// ====== Touch events ======
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
+    if (inDeadZone(pos.x)) return;
     activePoint = hitTest(pos);
 });
 
 canvas.addEventListener("touchmove", e => {
     if (!activePoint) return;
     const pos = getTouchPos(e);
+    if (inDeadZone(pos.x)) return;
+
     activePoint.x = pos.x;
     activePoint.y = pos.y;
     draw();
