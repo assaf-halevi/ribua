@@ -28,10 +28,24 @@ html, body {
 canvas {
     display: block;
 }
+
+/* כפתור ריבוע */
+#squareBtn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #7d7d7d;
+    background: transparent;
+    border-radius: 2px;
+    z-index: 10;
+}
 </style>
 </head>
 <body>
 
+<div id="squareBtn"></div>
 <canvas id="canvas"></canvas>
 
 <script>
@@ -51,9 +65,7 @@ const LINE_COLOR   = "#8a8a8a";
 const POINT_COLOR  = "#7d7d7d";
 const LINE_WIDTH   = 3;
 const POINT_RADIUS = 8;
-
-/* אזור מת למחוות מערכת */
-const DEAD_ZONE = 20;
+const DEAD_ZONE    = 20;
 
 /* ================== נקודות ================== */
 let points = [
@@ -91,7 +103,6 @@ function inDeadZone(x) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // קווים
     ctx.strokeStyle = LINE_COLOR;
     ctx.lineWidth = LINE_WIDTH;
     ctx.beginPath();
@@ -102,7 +113,6 @@ function draw() {
     ctx.closePath();
     ctx.stroke();
 
-    // נקודות
     ctx.fillStyle = POINT_COLOR;
     points.forEach(p => {
         ctx.beginPath();
@@ -113,7 +123,7 @@ function draw() {
 
 draw();
 
-/* ================== Touch Events ================== */
+/* ================== Touch ================== */
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
     if (inDeadZone(pos.x)) return;
@@ -126,13 +136,8 @@ canvas.addEventListener("touchmove", e => {
     const pos = getTouchPos(e);
     if (inDeadZone(pos.x)) return;
 
-    const minX = POINT_RADIUS;
-    const maxX = canvas.width  - POINT_RADIUS;
-    const minY = POINT_RADIUS;
-    const maxY = canvas.height - POINT_RADIUS;
-
-    activePoint.x = clamp(pos.x, minX, maxX);
-    activePoint.y = clamp(pos.y, minY, maxY);
+    activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
+    activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
 
     draw();
 });
@@ -140,6 +145,25 @@ canvas.addEventListener("touchmove", e => {
 canvas.addEventListener("touchend", () => {
     activePoint = null;
 });
+
+/* ================== כפתור ריבוע ================== */
+document.getElementById("squareBtn").addEventListener("click", makePerfectSquare);
+
+function makePerfectSquare() {
+    const size = Math.min(canvas.width, canvas.height) * 0.4;
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const h = size / 2;
+
+    points = [
+        { x: cx - h, y: cy - h },
+        { x: cx + h, y: cy - h },
+        { x: cx + h, y: cy + h },
+        { x: cx - h, y: cy + h }
+    ];
+
+    draw();
+}
 </script>
 
 </body>
