@@ -121,4 +121,14 @@ canvas.addEventListener("touchmove", e => {
     if (inDeadZone(pos.x)) return;
 
     activePoint.x = pos.x;
-    activePo
+    activePoint.y = pos.y;
+    draw();
+});
+
+canvas.addEventListener("touchend", () => {
+    activePoint = null;
+});
+</script>
+
+</body>
+</html>
