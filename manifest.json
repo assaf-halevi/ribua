@@ -1,0 +1,9 @@
+{
+  "name": "Points Game",
+  "short_name": "Points",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#cfcfcf",
+  "theme_color": "#cfcfcf",
+  "orientation": "portrait"
+}
