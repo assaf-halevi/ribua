@@ -29,27 +29,41 @@ canvas {
     display: block;
 }
 
-/* כפתור ריבוע */
-#squareBtn {
+/* כפתורים */
+.btn {
     position: fixed;
     top: 12px;
-    right: 12px;
     width: 20px;
     height: 20px;
     border: 2px solid #7d7d7d;
     background: transparent;
-    border-radius: 2px;
     z-index: 10;
+}
+
+#squareBtn {
+    right: 12px;
+}
+
+#starBtn {
+    right: 40px;
+    clip-path: polygon(
+        50% 0%, 61% 35%, 98% 35%,
+        68% 57%, 79% 91%,
+        50% 70%, 21% 91%,
+        32% 57%, 2% 35%,
+        39% 35%
+    );
 }
 </style>
 </head>
 <body>
 
-<div id="squareBtn"></div>
+<div id="starBtn" class="btn"></div>
+<div id="squareBtn" class="btn"></div>
 <canvas id="canvas"></canvas>
 
 <script>
-/* ================== Canvas ================== */
+/* ================= Canvas ================= */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -60,14 +74,14 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-/* ================== עיצוב ================== */
+/* ================= עיצוב ================= */
 const LINE_COLOR   = "#8a8a8a";
 const POINT_COLOR  = "#7d7d7d";
 const LINE_WIDTH   = 3;
 const POINT_RADIUS = 8;
 const DEAD_ZONE    = 20;
 
-/* ================== נקודות ================== */
+/* ================= נקודות ================= */
 let points = [
     { x: 200, y: 150 },
     { x: 360, y: 280 },
@@ -77,7 +91,7 @@ let points = [
 
 let activePoint = null;
 
-/* ================== Helpers ================== */
+/* ================= Helpers ================= */
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
@@ -99,7 +113,7 @@ function inDeadZone(x) {
     return x < DEAD_ZONE;
 }
 
-/* ================== ציור ================== */
+/* ================= ציור ================= */
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -123,7 +137,7 @@ function draw() {
 
 draw();
 
-/* ================== Touch ================== */
+/* ================= Touch ================= */
 canvas.addEventListener("touchstart", e => {
     const pos = getTouchPos(e);
     if (inDeadZone(pos.x)) return;
@@ -138,18 +152,16 @@ canvas.addEventListener("touchmove", e => {
 
     activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
     activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
-
     draw();
 });
 
-canvas.addEventListener("touchend", () => {
-    activePoint = null;
-});
+canvas.addEventListener("touchend", () => activePoint = null);
 
-/* ================== כפתור ריבוע ================== */
-document.getElementById("squareBtn").addEventListener("click", makePerfectSquare);
+/* ================= כפתורי צורות ================= */
+document.getElementById("squareBtn").onclick = makeSquare;
+document.getElementById("starBtn").onclick   = makeStar;
 
-function makePerfectSquare() {
+function makeSquare() {
     const size = Math.min(canvas.width, canvas.height) * 0.4;
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
@@ -161,7 +173,34 @@ function makePerfectSquare() {
         { x: cx + h, y: cy + h },
         { x: cx - h, y: cy + h }
     ];
+    draw();
+}
 
+function makeStar() {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const outerR = Math.min(canvas.width, canvas.height) * 0.35;
+    const innerR = outerR * 0.45;
+    const spikes = 5;
+
+    points = [];
+    let angle = -Math.PI / 2;
+
+    for (let i = 0; i < spikes; i++) {
+        // נקודה חיצונית
+        points.push({
+            x: cx + Math.cos(angle) * outerR,
+            y: cy + Math.sin(angle) * outerR
+        });
+        angle += Math.PI / spikes;
+
+        // נקודה פנימית
+        points.push({
+            x: cx + Math.cos(angle) * innerR,
+            y: cy + Math.sin(angle) * innerR
+        });
+        angle += Math.PI / spikes;
+    }
     draw();
 }
 </script>
