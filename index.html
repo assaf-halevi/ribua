@@ -1,12 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="he">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport"
       content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
 <title>Points Game</title>
 <link rel="manifest" href="manifest.json">
-
 <style>
 html, body {
     margin: 0;
@@ -58,6 +59,9 @@ canvas { display: block; }
 <canvas id="canvas"></canvas>
 
 <script>
+
+
+
 /* ================= Canvas ================= */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -83,19 +87,19 @@ let points = [
 ];
 
 let activePoint = null;
-let lastSafePos = null;
 
 /* ================= Helpers ================= */
-function dist(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
 
+function dist(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
 function getClosestPoint(pos) {
-    let best = null, bestDist = Infinity;
+    let best = null;
+    let bestDist = Infinity;
     points.forEach(p => {
         const d = dist(p, pos);
         if (d < bestDist) {
@@ -106,49 +110,41 @@ function getClosestPoint(pos) {
     return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
-/* ================= Geometry ================= */
-function pointToSegmentProjection(p, a, b) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len2 = dx*dx + dy*dy;
-    if (len2 === 0) return { x: a.x, y: a.y };
-
-    let t = ((p.x - a.x)*dx + (p.y - a.y)*dy) / len2;
-    t = clamp(t, 0, 1);
-    return {
-        x: a.x + t*dx,
-        y: a.y + t*dy
-    };
+/* ================= Line Intersection ================= */
+function ccw(A, B, C) {
+    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
 }
 
-function segmentsIntersect(p1, p2, p3, p4) {
-    function ccw(A,B,C){
-        return (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x);
-    }
-    return ccw(p1,p3,p4) !== ccw(p2,p3,p4) &&
-           ccw(p1,p2,p3) !== ccw(p1,p2,p4);
+function linesIntersect(a, b, c, d) {
+    return ccw(a, c, d) !== ccw(b, c, d) &&
+           ccw(a, b, c) !== ccw(a, b, d);
 }
 
-/* ================= Collision ================= */
-function checkIllegalCross(movedPoint, newPos) {
-    const idx = points.indexOf(movedPoint);
-    const prev = points[(idx - 1 + points.length) % points.length];
-    const next = points[(idx + 1) % points.length];
-
-    for (let i = 0; i < points.length; i++) {
-        const a = points[i];
-        const b = points[(i + 1) % points.length];
-
-        // דלג על הקווים שמחוברים לנקודה
-        if (a === movedPoint || b === movedPoint ||
-            a === prev || b === prev ||
-            a === next || b === next) continue;
-
-        if (segmentsIntersect(lastSafePos, newPos, a, b)) {
-            return pointToSegmentProjection(lastSafePos, a, b);
+function hasSelfIntersections() {
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+        const a1 = points[i];
+        const a2 = points[(i + 1) % n];
+        for (let j = i + 1; j < n; j++) {
+            if (Math.abs(i - j) <= 1 || (i === 0 && j === n - 1)) continue;
+            const b1 = points[j];
+            const b2 = points[(j + 1) % n];
+            if (linesIntersect(a1, a2, b1, b2)) return true;
         }
     }
-    return null;
+    return false;
+}
+
+function reorderIfNeeded() {
+    if (!hasSelfIntersections()) return;
+
+    const cx = points.reduce((s,p)=>s+p.x,0)/points.length;
+    const cy = points.reduce((s,p)=>s+p.y,0)/points.length;
+
+    points.sort((a,b)=>
+        Math.atan2(a.y-cy,a.x-cx) -
+        Math.atan2(b.y-cy,b.x-cx)
+    );
 }
 
 /* ================= Draw ================= */
@@ -178,37 +174,27 @@ draw();
 canvas.addEventListener("touchstart", e => {
     const t = e.touches[0];
     activePoint = getClosestPoint({ x: t.clientX, y: t.clientY });
-    if (activePoint) {
-        lastSafePos = { x: activePoint.x, y: activePoint.y };
-    }
 });
 
 canvas.addEventListener("touchmove", e => {
-    if (!activePoint) return;
-
     const t = e.touches[0];
-    const newPos = {
-        x: clamp(t.clientX, POINT_RADIUS, canvas.width - POINT_RADIUS),
-        y: clamp(t.clientY, POINT_RADIUS, canvas.height - POINT_RADIUS)
-    };
+    const pos = { x: t.clientX, y: t.clientY };
 
-    const collision = checkIllegalCross(activePoint, newPos);
-    if (collision) {
-        activePoint.x = collision.x;
-        activePoint.y = collision.y;
-        activePoint = null; // 💥 שחרור כפוי
-        draw();
-        return;
+    // 🧲 מגנט גם אם התחיל בלי נקודה
+    if (!activePoint) {
+        activePoint = getClosestPoint(pos);
+        if (!activePoint) return;
     }
 
-    activePoint.x = newPos.x;
-    activePoint.y = newPos.y;
-    lastSafePos = { ...newPos };
+    activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
+    activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
     draw();
 });
 
 canvas.addEventListener("touchend", () => {
     activePoint = null;
+    reorderIfNeeded();   // רק אם יש חיתוכים
+    draw();
 });
 
 /* ================= Shapes ================= */
@@ -236,13 +222,17 @@ starBtn.onclick = () => {
         points.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r});
         a+=Math.PI/5;
     }
-    draw();
+    draw(); // כוכב נשאר כוכב
 };
 
-/* ================= PWA ================= */
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker Registered'))
+        .catch((error) => console.log('Registration failed:', error));
 }
 </script>
 </body>
 </html>
+
+
+
