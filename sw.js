@@ -1,5 +1,5 @@
 // Cache name can stay the same unless you want to force a full refresh
-const CACHE_NAME = 'points-game';
+const CACHE_NAME = 'points game';
 
 // Files to pre-cache (for offline support)
 const FILES_TO_CACHE = [
