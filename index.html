@@ -126,7 +126,6 @@ const LINE_COLOR   = "#8a8a8a";
 const POINT_COLOR  = "#7d7d7d";
 const LINE_WIDTH   = 3;
 const POINT_RADIUS = 10;
-const DEAD_ZONE    = 20;
 
 /* 🧲 מגנט חזק לילדים */
 const MAGNET_RADIUS = 80;
@@ -170,6 +169,36 @@ function getClosestPoint(pos) {
     return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
+/* ================= לולאה סגורה לפי שכנים ================= */
+function reorderPointsNearestLoop(pts) {
+    if (pts.length <= 2) return pts;
+
+    const unused = [...pts];
+    const ordered = [];
+
+    unused.sort((a, b) => a.x - b.x || a.y - b.y);
+    let current = unused.shift();
+    ordered.push(current);
+
+    while (unused.length) {
+        let bestIndex = 0;
+        let bestDist = Infinity;
+
+        unused.forEach((p, i) => {
+            const d = distance(current, p);
+            if (d < bestDist) {
+                bestDist = d;
+                bestIndex = i;
+            }
+        });
+
+        current = unused.splice(bestIndex, 1)[0];
+        ordered.push(current);
+    }
+
+    return ordered;
+}
+
 /* ================= ציור ================= */
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -177,10 +206,12 @@ function draw() {
     ctx.strokeStyle = LINE_COLOR;
     ctx.lineWidth = LINE_WIDTH;
     ctx.beginPath();
+
     points.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
     });
+
     ctx.closePath();
     ctx.stroke();
 
@@ -206,6 +237,10 @@ canvas.addEventListener("touchmove", e => {
     const pos = getTouchPos(e);
     activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
     activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
+
+    // 🔁 סידור מחדש – תמיד לולאה סגורה
+    points = reorderPointsNearestLoop(points);
+
     draw();
 });
 
@@ -240,13 +275,18 @@ function makeStar() {
     let angle = -Math.PI / 2;
 
     for (let i = 0; i < 5; i++) {
-        points.push({ x: cx + Math.cos(angle) * outerR,
-                      y: cy + Math.sin(angle) * outerR });
+        points.push({
+            x: cx + Math.cos(angle) * outerR,
+            y: cy + Math.sin(angle) * outerR
+        });
         angle += Math.PI / 5;
-        points.push({ x: cx + Math.cos(angle) * innerR,
-                      y: cy + Math.sin(angle) * innerR });
+        points.push({
+            x: cx + Math.cos(angle) * innerR,
+            y: cy + Math.sin(angle) * innerR
+        });
         angle += Math.PI / 5;
     }
+
     draw();
 }
 </script>
