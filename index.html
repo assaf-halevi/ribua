@@ -4,59 +4,76 @@
 <meta charset="UTF-8">
 <meta name="viewport"
       content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
-
 <title>Points Game</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
 html, body {
-    margin: 0;
-    padding: 0;
-    background: #cfcfcf;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    touch-action: none;
+  margin: 0;
+  padding: 0;
+  background: #cfcfcf;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
 }
 
 canvas { display: block; }
 
+/* ריבוע */
 #squareBtn {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    width: 22px;
-    height: 22px;
-    border: 2px solid #7d7d7d;
-    background: #cfcfcf;
-    z-index: 20;
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #7d7d7d;
+  background: #cfcfcf;
+  z-index: 20;
 }
 
+/* כוכב בלי ריבוע */
 #starBtn {
-    position: fixed;
-    top: 12px;
-    right: 48px;
-    width: 22px;
-    height: 22px;
-    z-index: 20;
+  position: fixed;
+  top: 12px;
+  right: 48px;
+  width: 22px;
+  height: 22px;
+  z-index: 20;
 }
 
 #starBtn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: #7d7d7d;
-    clip-path: polygon(
-        50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
-        50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
-    );
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #7d7d7d;
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
 }
 
+/* אזור יציאה נסתר */
 #exitZone {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 40px;
-    height: 40px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  z-index: 50;
 }
 </style>
 </head>
@@ -68,135 +85,199 @@ canvas { display: block; }
 <canvas id="canvas"></canvas>
 
 <script>
-window.addEventListener("load", () => {
+/* ================= Fullscreen Lock ================= */
+function enterFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+document.addEventListener("click", () => {
+  if (!document.fullscreenElement) enterFullscreen();
+});
+
+/* דאבל־טאפ נסתר ליציאה */
+let exitTapTime = 0;
+document.getElementById("exitZone").addEventListener("touchstart", () => {
+  const now = Date.now();
+  if (now - exitTapTime < 400) document.exitFullscreen();
+  exitTapTime = now;
+});
 
 /* ================= Canvas ================= */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 resize();
-addEventListener("resize", resize);
+window.addEventListener("resize", resize);
 
 /* ================= עיצוב ================= */
-const LINE_COLOR = "#8a8a8a";
-const POINT_COLOR = "#7d7d7d";
-const LINE_WIDTH = 3;
+const LINE_COLOR   = "#8a8a8a";
+const POINT_COLOR  = "#7d7d7d";
+const LINE_WIDTH   = 3;
 const POINT_RADIUS = 10;
+
+/* 🧲 מגנט חזק לילדים */
 const MAGNET_RADIUS = 80;
 
 /* ================= נקודות ================= */
 let points = [
-    { x: 200, y: 150 },
-    { x: 360, y: 280 },
-    { x: 300, y: 520 },
-    { x: 140, y: 300 }
+  { x: 200, y: 150 },
+  { x: 360, y: 280 },
+  { x: 300, y: 520 },
+  { x: 140, y: 300 }
 ];
 
 let activePoint = null;
 
 /* ================= Helpers ================= */
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
 
 function getTouchPos(e) {
-    const t = e.touches[0];
-    return { x: t.clientX, y: t.clientY };
+  const t = e.touches[0];
+  return { x: t.clientX, y: t.clientY };
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function getClosestPoint(pos) {
-    let best = null, d0 = Infinity;
-    for (const p of points) {
-        const d = dist(p, pos);
-        if (d < d0) { d0 = d; best = p; }
+  let best = null;
+  let bestDist = Infinity;
+
+  points.forEach(p => {
+    const d = distance(p, pos);
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
     }
-    return d0 <= MAGNET_RADIUS ? best : null;
+  });
+
+  return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
-/* ================= סידור צורה סגורה ================= */
-function rebuildPolygon() {
-    let cx = 0, cy = 0;
-    points.forEach(p => { cx += p.x; cy += p.y; });
-    cx /= points.length;
-    cy /= points.length;
+/* --------- NEW: reorder points to form a simple closed polygon --------- */
+function getCentroid(pts) {
+  let x = 0, y = 0;
+  pts.forEach(p => { x += p.x; y += p.y; });
+  return { x: x / pts.length, y: y / pts.length };
+}
 
-    points.sort((a,b) =>
-        Math.atan2(a.y-cy, a.x-cx) -
-        Math.atan2(b.y-cy, b.x-cx)
-    );
+function reorderPointsSimplePolygon() {
+  if (!points || points.length < 3) return;
+  const c = getCentroid(points);
+
+  // Sort by polar angle around centroid => one simple loop, no inner chords
+  points.sort((a, b) => {
+    const angA = Math.atan2(a.y - c.y, a.x - c.x);
+    const angB = Math.atan2(b.y - c.y, b.x - c.x);
+    return angA - angB;
+  });
 }
 
 /* ================= ציור ================= */
 function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = LINE_COLOR;
-    ctx.lineWidth = LINE_WIDTH;
+  // lines
+  ctx.strokeStyle = LINE_COLOR;
+  ctx.lineWidth = LINE_WIDTH;
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.closePath();
+  ctx.stroke();
+
+  // points
+  ctx.fillStyle = POINT_COLOR;
+  points.forEach(p => {
     ctx.beginPath();
-    points.forEach((p,i)=>{
-        i ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y);
-    });
-    ctx.closePath();
-    ctx.stroke();
-
-    ctx.fillStyle = POINT_COLOR;
-    points.forEach(p=>{
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,POINT_RADIUS,0,Math.PI*2);
-        ctx.fill();
-    });
+    ctx.arc(p.x, p.y, POINT_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
+
 draw();
 
 /* ================= Touch ================= */
-canvas.addEventListener("touchstart", e=>{
-    activePoint = getClosestPoint(getTouchPos(e));
+canvas.addEventListener("touchstart", e => {
+  const pos = getTouchPos(e);
+  activePoint = getClosestPoint(pos);
 });
 
-canvas.addEventListener("touchmove", e=>{
-    if (!activePoint) return;
-    const p = getTouchPos(e);
-    activePoint.x = clamp(p.x, POINT_RADIUS, canvas.width-POINT_RADIUS);
-    activePoint.y = clamp(p.y, POINT_RADIUS, canvas.height-POINT_RADIUS);
-    draw();
+canvas.addEventListener("touchmove", e => {
+  if (!activePoint) return;
+
+  const pos = getTouchPos(e);
+  activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
+  activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
+  draw();
 });
 
-canvas.addEventListener("touchend", ()=>{
-    if (activePoint) {
-        rebuildPolygon();
-        draw();
-    }
-    activePoint = null;
+canvas.addEventListener("touchend", () => {
+  activePoint = null;
+
+  // ✅ on release, rebuild edges so polygon is closed and has no inner lines
+  // "Rule of thumb": if it got messy (e.g., >4 edges), rebuild as #points.
+  // In practice, this always rebuilds and ensures #edges == #points.
+  reorderPointsSimplePolygon();
+  draw();
 });
 
-/* ================= כפתורים ================= */
-squareBtn.onclick = ()=>{
-    const s = Math.min(innerWidth, innerHeight)*0.4;
-    const cx = innerWidth/2, cy = innerHeight/2, h = s/2;
-    points = [
-        {x:cx-h,y:cy-h},{x:cx+h,y:cy-h},
-        {x:cx+h,y:cy+h},{x:cx-h,y:cy+h}
-    ];
-    rebuildPolygon(); draw();
-};
+/* ================= צורות ================= */
+document.getElementById("squareBtn").onclick = makeSquare;
+document.getElementById("starBtn").onclick   = makeStar;
 
-starBtn.onclick = ()=>{
-    const cx = innerWidth/2, cy = innerHeight/2;
-    const R = Math.min(innerWidth, innerHeight)*0.35;
-    const r = R*0.45;
-    points = [];
-    let a = -Math.PI/2;
-    for (let i=0;i<5;i++){
-        points.push({x:cx+Math.cos(a)*R,y:cy+Math.sin(a)*R}); a+=Math.PI/5;
-        points.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r}); a+=Math.PI/5;
-    }
-    rebuildPolygon(); draw();
-};
+function makeSquare() {
+  const size = Math.min(canvas.width, canvas.height) * 0.4;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const h = size / 2;
 
-});
+  points = [
+    { x: cx - h, y: cy - h },
+    { x: cx + h, y: cy - h },
+    { x: cx + h, y: cy + h },
+    { x: cx - h, y: cy + h }
+  ];
+  // ensure consistent order
+  reorderPointsSimplePolygon();
+  draw();
+}
+
+function makeStar() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const outerR = Math.min(canvas.width, canvas.height) * 0.35;
+  const innerR = outerR * 0.45;
+
+  points = [];
+  let angle = -Math.PI / 2;
+
+  for (let i = 0; i < 5; i++) {
+    points.push({ x: cx + Math.cos(angle) * outerR,
+                  y: cy + Math.sin(angle) * outerR });
+    angle += Math.PI / 5;
+    points.push({ x: cx + Math.cos(angle) * innerR,
+                  y: cy + Math.sin(angle) * innerR });
+    angle += Math.PI / 5;
+  }
+
+  // IMPORTANT: star intentionally has an "inner lines" idea,
+  // but your rule says: after release -> rebuild to a simple polygon.
+  // So we keep it as star initially; when user drags & releases,
+  // it will convert to a simple closed polygon automatically.
+  draw();
+}
 </script>
 </body>
 </html>
