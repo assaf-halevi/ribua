@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="he">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport"
       content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
 <title>Points Game</title>
-<link rel="manifest" href="manifest.json">
+
 <style>
 html, body {
     margin: 0;
@@ -73,6 +72,7 @@ addEventListener("resize", resize);
 const POINT_RADIUS = 10;
 const MAGNET_RADIUS = 90;
 const LINE_WIDTH = 3;
+const BLOCK_DISTANCE = 8; // מרחק מינימלי מקו זר
 
 /* ================= State ================= */
 let points = [
@@ -106,70 +106,43 @@ function getClosestPoint(pos) {
     return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
-/* ================= Line Intersection ================= */
-function ccw(A, B, C) {
-    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+/* ================= Distance Point → Segment ================= */
+function pointToSegmentDistance(p, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const l2 = dx*dx + dy*dy;
+    if (l2 === 0) return dist(p, a);
+
+    let t = ((p.x - a.x)*dx + (p.y - a.y)*dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return dist(p, {
+        x: a.x + t*dx,
+        y: a.y + t*dy
+    });
 }
 
-function linesIntersect(a, b, c, d) {
-    return ccw(a, c, d) !== ccw(b, c, d) &&
-           ccw(a, b, c) !== ccw(a, b, d);
-}
-
-/* ==== Block rule: if active point touches a foreign edge, release ==== */
-function pointHitsForeignEdge(pointIndex, newPos) {
+/* ================= Block rule ================= */
+function hitsForeignLine(index, pos) {
     const n = points.length;
-    const prev = points[(pointIndex - 1 + n) % n];
-    const next = points[(pointIndex + 1) % n];
+    const prev = points[(index - 1 + n) % n];
+    const next = points[(index + 1) % n];
 
     for (let i = 0; i < n; i++) {
         const a = points[i];
         const b = points[(i + 1) % n];
 
-        // skip edges that belong to the active point (prev-active-next)
+        // מדלגים על הקווים של הנקודה עצמה
         if (
-            a === prev || a === next ||
-            b === prev || b === next ||
-            a === points[pointIndex] || b === points[pointIndex]
+            a === prev || b === prev ||
+            a === next || b === next ||
+            a === points[index] || b === points[index]
         ) continue;
 
-        // if either of the new edges crosses any foreign edge => blocked
-        if (
-            linesIntersect(newPos, prev, a, b) ||
-            linesIntersect(newPos, next, a, b)
-        ) {
+        if (pointToSegmentDistance(pos, a, b) < POINT_RADIUS + BLOCK_DISTANCE) {
             return true;
         }
     }
     return false;
-}
-
-/* ================= Self Intersection (kept as in your code) ================= */
-function hasSelfIntersections() {
-    const n = points.length;
-    for (let i = 0; i < n; i++) {
-        const a1 = points[i];
-        const a2 = points[(i + 1) % n];
-        for (let j = i + 1; j < n; j++) {
-            if (Math.abs(i - j) <= 1 || (i === 0 && j === n - 1)) continue;
-            const b1 = points[j];
-            const b2 = points[(j + 1) % n];
-            if (linesIntersect(a1, a2, b1, b2)) return true;
-        }
-    }
-    return false;
-}
-
-function reorderIfNeeded() {
-    if (!hasSelfIntersections()) return;
-
-    const cx = points.reduce((s,p)=>s+p.x,0)/points.length;
-    const cy = points.reduce((s,p)=>s+p.y,0)/points.length;
-
-    points.sort((a,b)=>
-        Math.atan2(a.y-cy,a.x-cx) -
-        Math.atan2(b.y-cy,b.x-cx)
-    );
 }
 
 /* ================= Draw ================= */
@@ -205,7 +178,6 @@ canvas.addEventListener("touchmove", e => {
     const t = e.touches[0];
     const pos = { x: t.clientX, y: t.clientY };
 
-    // 🧲 magnet even if started off-point
     if (!activePoint) {
         activePoint = getClosestPoint(pos);
         if (!activePoint) return;
@@ -217,8 +189,8 @@ canvas.addEventListener("touchmove", e => {
         y: clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS)
     };
 
-    // 🚫 if touching/crossing a foreign edge => release
-    if (pointHitsForeignEdge(idx, newPos)) {
+    // ⛔ מחסום קשיח
+    if (hitsForeignLine(idx, newPos)) {
         activePoint = null;
         return;
     }
@@ -230,14 +202,9 @@ canvas.addEventListener("touchmove", e => {
 
 canvas.addEventListener("touchend", () => {
     activePoint = null;
-    reorderIfNeeded();   // only if there are intersections (kept)
-    draw();
 });
 
 /* ================= Shapes ================= */
-const squareBtn = document.getElementById("squareBtn");
-const starBtn = document.getElementById("starBtn");
-
 squareBtn.onclick = () => {
     const s = Math.min(canvas.width,canvas.height)*0.4;
     const cx = canvas.width/2, cy = canvas.height/2, h=s/2;
@@ -262,14 +229,8 @@ starBtn.onclick = () => {
         points.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r});
         a+=Math.PI/5;
     }
-    draw(); // star stays a star
+    draw();
 };
-
-if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js')
-        .then(() => console.log('Service Worker Registered'))
-        .catch((error) => console.log('Registration failed:', error));
-}
 </script>
 </body>
 </html>
