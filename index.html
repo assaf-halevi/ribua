@@ -58,9 +58,6 @@ canvas { display: block; }
 
 <script>
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
-}
 
 
 /* ================= Canvas ================= */
@@ -225,7 +222,14 @@ starBtn.onclick = () => {
     }
     draw(); // כוכב נשאר כוכב
 };
+
+if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker Registered'))
+        .catch((error) => console.log('Registration failed:', error));
+}
 </script>
 </body>
 </html>
+
 
