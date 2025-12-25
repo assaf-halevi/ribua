@@ -1,7 +1,7 @@
 {
   "name": "Points Game",
   "short_name": "Points",
-  "start_url": "./",
+  "start_url": "index.html",
   "display": "fullscreen",
   "background_color": "#cfcfcf",
   "theme_color": "#cfcfcf",
@@ -19,3 +19,4 @@
     }
   ]
 }
+
