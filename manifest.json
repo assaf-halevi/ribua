@@ -1,23 +1,22 @@
 {
   "name": "Points Game",
   "short_name": "Points",
-  "start_url": "index.html",
-  "display": "fullscreen",
+  "start_url": "/ribua/",
+  "scope": "/ribua/",
+  "display": "standalone",
   "background_color": "#cfcfcf",
   "theme_color": "#cfcfcf",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://assaf-halevi.github.io/ribua/icon-192.png",
+      "src": "/ribua/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://assaf-halevi.github.io/ribua/icon-512.png",
+      "src": "/ribua/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ]
 }
-
-
