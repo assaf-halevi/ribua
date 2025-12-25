@@ -22,6 +22,11 @@
 <canvas id="canvas"></canvas>
 
 <script>
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+    
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -111,3 +116,4 @@ canvas.addEventListener("touchend", () => {
 
 </body>
 </html>
+
