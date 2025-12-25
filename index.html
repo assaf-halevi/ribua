@@ -57,6 +57,7 @@ canvas { display: block; }
 <canvas id="canvas"></canvas>
 
 <script>
+/* ================= Canvas ================= */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -67,9 +68,12 @@ function resize() {
 resize();
 addEventListener("resize", resize);
 
+/* ================= Config ================= */
 const POINT_RADIUS = 10;
-const MAGNET_RADIUS = 80;
+const MAGNET_RADIUS = 90;
+const LINE_WIDTH = 3;
 
+/* ================= State ================= */
 let points = [
     { x: 200, y: 150 },
     { x: 360, y: 280 },
@@ -79,25 +83,29 @@ let points = [
 
 let activePoint = null;
 
-/* ================= Geometry ================= */
+/* ================= Helpers ================= */
+function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+}
+
 function dist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function getClosestPoint(pos) {
-    let best = null, dmin = Infinity;
+    let best = null;
+    let bestDist = Infinity;
     points.forEach(p => {
         const d = dist(p, pos);
-        if (d < dmin) { dmin = d; best = p; }
+        if (d < bestDist) {
+            bestDist = d;
+            best = p;
+        }
     });
-    return dmin <= MAGNET_RADIUS ? best : null;
+    return bestDist <= MAGNET_RADIUS ? best : null;
 }
 
-function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
-}
-
-/* ===== line intersection detection ===== */
+/* ================= Line Intersection ================= */
 function ccw(A, B, C) {
     return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
 }
@@ -112,20 +120,16 @@ function hasSelfIntersections() {
     for (let i = 0; i < n; i++) {
         const a1 = points[i];
         const a2 = points[(i + 1) % n];
-
         for (let j = i + 1; j < n; j++) {
             if (Math.abs(i - j) <= 1 || (i === 0 && j === n - 1)) continue;
-
             const b1 = points[j];
             const b2 = points[(j + 1) % n];
-
             if (linesIntersect(a1, a2, b1, b2)) return true;
         }
     }
     return false;
 }
 
-/* ===== reorder only if needed ===== */
 function reorderIfNeeded() {
     if (!hasSelfIntersections()) return;
 
@@ -143,7 +147,7 @@ function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     ctx.strokeStyle = "#8a8a8a";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = LINE_WIDTH;
     ctx.beginPath();
     points.forEach((p,i)=>{
         if(i===0) ctx.moveTo(p.x,p.y);
@@ -162,37 +166,46 @@ function draw() {
 draw();
 
 /* ================= Touch ================= */
-canvas.addEventListener("touchstart", e=>{
+canvas.addEventListener("touchstart", e => {
     const t = e.touches[0];
-    activePoint = getClosestPoint({x:t.clientX,y:t.clientY});
+    activePoint = getClosestPoint({ x: t.clientX, y: t.clientY });
 });
 
-canvas.addEventListener("touchmove", e=>{
-    if(!activePoint) return;
+canvas.addEventListener("touchmove", e => {
     const t = e.touches[0];
-    activePoint.x = clamp(t.clientX, POINT_RADIUS, canvas.width-POINT_RADIUS);
-    activePoint.y = clamp(t.clientY, POINT_RADIUS, canvas.height-POINT_RADIUS);
+    const pos = { x: t.clientX, y: t.clientY };
+
+    // 🧲 מגנט גם אם התחיל בלי נקודה
+    if (!activePoint) {
+        activePoint = getClosestPoint(pos);
+        if (!activePoint) return;
+    }
+
+    activePoint.x = clamp(pos.x, POINT_RADIUS, canvas.width  - POINT_RADIUS);
+    activePoint.y = clamp(pos.y, POINT_RADIUS, canvas.height - POINT_RADIUS);
     draw();
 });
 
-canvas.addEventListener("touchend", ()=>{
+canvas.addEventListener("touchend", () => {
     activePoint = null;
-    reorderIfNeeded();   // 🔑 רק אם יש חיתוכים
+    reorderIfNeeded();   // רק אם יש חיתוכים
     draw();
 });
 
 /* ================= Shapes ================= */
-squareBtn.onclick = ()=>{
+squareBtn.onclick = () => {
     const s = Math.min(canvas.width,canvas.height)*0.4;
     const cx = canvas.width/2, cy = canvas.height/2, h=s/2;
     points = [
-        {x:cx-h,y:cy-h},{x:cx+h,y:cy-h},
-        {x:cx+h,y:cy+h},{x:cx-h,y:cy+h}
+        {x:cx-h,y:cy-h},
+        {x:cx+h,y:cy-h},
+        {x:cx+h,y:cy+h},
+        {x:cx-h,y:cy+h}
     ];
     draw();
 };
 
-starBtn.onclick = ()=>{
+starBtn.onclick = () => {
     const cx = canvas.width/2, cy = canvas.height/2;
     const R = Math.min(canvas.width,canvas.height)*0.35;
     const r = R*0.45;
